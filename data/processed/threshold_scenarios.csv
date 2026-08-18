@@ -1,0 +1,5 @@
+scenario,seuil,fails_detectes,recall_pct,fausses_alertes,precision_pct,pct_lots_total_signales
+Conservateur (defaut sklearn),0.5,7/26,26.9,18,28.0,6.4
+Equilibre,0.3,17/26,65.4,85,16.7,26.0
+Sensible (priorise detection),0.2,21/26,80.8,167,11.2,48.0
+Tres sensible (risque de saturation),0.15,25/26,96.2,227,9.9,64.3
