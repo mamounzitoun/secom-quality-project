@@ -1,0 +1,11 @@
+capteur,importance_shap,ratio_derive_long_court,direction_risque,action_recommandee
+Sensor_060,0.0587,1.77,Valeur ELEVEE -> risque fail,"Resserrement des limites de controle (bruit stable, pas de derive)"
+Sensor_104,0.0313,1.52,Valeur ELEVEE -> risque fail,"Resserrement des limites de controle (bruit stable, pas de derive)"
+Sensor_041,0.0312,1.49,Valeur BASSE -> risque fail,"Resserrement des limites de controle (bruit stable, pas de derive)"
+Sensor_131,0.0267,2.03,Valeur ELEVEE -> risque fail,Surveillance renforcee + recalibration periodique
+Sensor_122,0.0252,2.04,Valeur ELEVEE -> risque fail,Surveillance renforcee + recalibration periodique
+Sensor_117,0.0241,1.88,Valeur BASSE -> risque fail,Surveillance renforcee + recalibration periodique
+Sensor_022,0.0228,1.39,Valeur ELEVEE -> risque fail,"Resserrement des limites de controle (bruit stable, pas de derive)"
+Sensor_511,0.0222,1.58,Valeur ELEVEE -> risque fail,"Resserrement des limites de controle (bruit stable, pas de derive)"
+Sensor_125,0.0196,2.02,Valeur ELEVEE -> risque fail,Surveillance renforcee + recalibration periodique
+Sensor_029,0.0193,1.37,Valeur BASSE -> risque fail,"Resserrement des limites de controle (bruit stable, pas de derive)"
