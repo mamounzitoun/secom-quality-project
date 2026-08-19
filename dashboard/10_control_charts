@@ -1,0 +1,124 @@
+"""
+Phase CONTROL - Cartes de controle perennes + regles d'alerte + export Power BI
+
+Sur les capteurs prioritaires (Top 10 SHAP), on met en place :
+1. Carte de controle I-MR (deja utilisee en Measure) avec limites figees
+   (ces limites deviennent la reference officielle pour la surveillance future)
+2. Regles de Nelson (2 premieres, les plus utilisees en industrie) :
+   - Regle 1 : 1 point au-dela de 3 sigma (deja fait)
+   - Regle 2 : 9 points consecutifs du meme cote de la moyenne (derive precoce)
+3. Export CSV structure pour import direct dans Power BI
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+D2_CONSTANT = 1.128
+N_CAPTEURS = 10
+
+# ============================================================
+# 1. CHARGEMENT
+# ============================================================
+data = pd.read_csv("data/processed/secom_clean.csv")
+labels = pd.read_csv("data/processed/secom_labels_clean.csv")
+pareto2 = pd.read_csv("data/processed/pareto_2_shap.csv")
+capteurs_prioritaires = pareto2["capteur"].head(N_CAPTEURS).tolist()
+
+# ============================================================
+# 2. CARTES DE CONTROLE + REGLES DE NELSON POUR CHAQUE CAPTEUR PRIORITAIRE
+# ============================================================
+alertes_toutes = []
+
+for capteur in capteurs_prioritaires:
+    x = data[capteur].values
+    x_barre = x.mean()
+    mr = np.abs(np.diff(x))
+    sigma_est = mr.mean() / D2_CONSTANT
+    ucl = x_barre + 3 * sigma_est
+    lcl = x_barre - 3 * sigma_est
+
+    # Regle 1 : hors limites
+    regle1 = (x > ucl) | (x < lcl)
+
+    # Regle 2 : 9 points consecutifs du meme cote de la moyenne
+    signe = np.sign(x - x_barre)
+    regle2 = np.zeros(len(x), dtype=bool)
+    for i in range(8, len(x)):
+        fenetre = signe[i-8:i+1]
+        if np.all(fenetre == 1) or np.all(fenetre == -1):
+            regle2[i] = True
+
+    for i in range(len(x)):
+        if regle1[i] or regle2[i]:
+            alertes_toutes.append({
+                "capteur": capteur,
+                "index_lot": i,
+                "valeur": x[i],
+                "moyenne_capteur": x_barre,
+                "UCL": ucl,
+                "LCL": lcl,
+                "regle1_hors_limite": regle1[i],
+                "regle2_derive_9points": regle2[i]
+            })
+
+alertes_df = pd.DataFrame(alertes_toutes)
+print(f"Total alertes detectees (Regle 1 + Regle 2) : {len(alertes_df)}")
+print(f"\nRepartition par capteur :")
+print(alertes_df["capteur"].value_counts().to_string())
+
+# ============================================================
+# 3. GRAPHIQUE CARTE DE CONTROLE - exemple sur le capteur n1 (Sensor_060)
+# ============================================================
+capteur_exemple = capteurs_prioritaires[0]
+x = data[capteur_exemple].values
+x_barre = x.mean()
+mr = np.abs(np.diff(x))
+sigma_est = mr.mean() / D2_CONSTANT
+ucl = x_barre + 3 * sigma_est
+lcl = x_barre - 3 * sigma_est
+
+plt.figure(figsize=(14, 5))
+plt.plot(x, color="#4C72B0", linewidth=0.8, marker="o", markersize=2)
+plt.axhline(x_barre, color="green", linestyle="-", label="Moyenne")
+plt.axhline(ucl, color="red", linestyle="--", label="UCL (+3 sigma)")
+plt.axhline(lcl, color="red", linestyle="--", label="LCL (-3 sigma)")
+hors_limite_idx = np.where((x > ucl) | (x < lcl))[0]
+plt.scatter(hors_limite_idx, x[hors_limite_idx], color="red", zorder=5, label="Hors controle")
+plt.title(f"Carte de controle I-MR perenne - {capteur_exemple} (capteur prioritaire #1)")
+plt.xlabel("Numero de lot (ordre chronologique)")
+plt.ylabel("Valeur mesuree")
+plt.legend()
+plt.tight_layout()
+plt.savefig("reports/control_chart_exemple.png", dpi=150)
+print(f"\nGraphique carte de controle sauvegarde : reports/control_chart_exemple.png")
+
+# ============================================================
+# 4. EXPORT STRUCTURE POUR POWER BI (format long, facile a brancher)
+# ============================================================
+export_powerbi = []
+for capteur in capteurs_prioritaires:
+    x = data[capteur].values
+    x_barre = x.mean()
+    mr = np.abs(np.diff(x))
+    sigma_est = mr.mean() / D2_CONSTANT
+    ucl = x_barre + 3 * sigma_est
+    lcl = x_barre - 3 * sigma_est
+
+    for i in range(len(x)):
+        export_powerbi.append({
+            "capteur": capteur,
+            "numero_lot": i,
+            "valeur": x[i],
+            "moyenne_reference": x_barre,
+            "UCL": ucl,
+            "LCL": lcl,
+            "hors_controle": bool((x[i] > ucl) or (x[i] < lcl)),
+            "label_fail": int(labels.iloc[i]["label"] == 1)
+        })
+
+export_df = pd.DataFrame(export_powerbi)
+export_df.to_csv("dashboard/donnees_controle_powerbi.csv", index=False)
+print(f"\nExport Power BI sauvegarde : dashboard/donnees_controle_powerbi.csv ({len(export_df)} lignes)")
+
+alertes_df.to_csv("data/processed/alertes_control.csv", index=False)
