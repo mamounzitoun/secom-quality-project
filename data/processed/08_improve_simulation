@@ -1,0 +1,116 @@
+"""
+Phase IMPROVE - Simulation d'impact (methode : correction individuelle)
+
+HISTORIQUE DES CORRECTIONS METHODOLOGIQUES :
+V1 - Remplacement simultane de 10 capteurs par leur mediane -> resultat
+     aberrant (taux de fail EN HAUSSE) : combinaisons hors distribution,
+     jamais vues par le modele a l'entrainement.
+V2 - Neutralisation des contributions SHAP (mise a zero) -> resultat encore
+     pire : pour les lots ou le capteur avait un effet PROTECTEUR (SHAP
+     negatif), le mettre a zero supprime cet effet et pousse vers "Fail".
+     Erreur conceptuelle : "neutraliser" n'est pas equivalent a "corriger".
+
+V3 (retenue) : on corrige les capteurs prioritaires UN A LA FOIS (pas
+simultanement), en remplacant leur valeur reelle par la mediane des lots
+Pass, et on mesure l'effet marginal individuel. Cela reste proche des
+donnees reelles connues du modele (un seul capteur change a la fois),
+evitant le probleme de combinaison hors distribution.
+
+Limite assumee : les effets individuels ne s'additionnent pas forcement
+lineairement si on corrige plusieurs capteurs a la fois (interactions
+possibles). On presente donc un classement individuel, pas une somme.
+"""
+
+import pandas as pd
+import numpy as np
+from sklearn.metrics import confusion_matrix
+import joblib
+
+SEUIL_DECISION = 0.30
+N_CAPTEURS_PRIORITAIRES = 10
+
+# ============================================================
+# 1. CHARGEMENT
+# ============================================================
+rf = joblib.load("data/processed/random_forest_model.joblib")
+X_test = pd.read_csv("data/processed/X_test.csv")
+y_test = pd.read_csv("data/processed/y_test.csv").squeeze()
+data_full = pd.read_csv("data/processed/secom_clean.csv")
+labels_full = pd.read_csv("data/processed/secom_labels_clean.csv")
+pareto2 = pd.read_csv("data/processed/pareto_2_shap.csv")
+
+capteurs_prioritaires = pareto2["capteur"].head(N_CAPTEURS_PRIORITAIRES).tolist()
+mask_pass = (labels_full["label"] == -1)
+mediane_pass = data_full.loc[mask_pass, capteurs_prioritaires].median()
+
+# ============================================================
+# 2. BASELINE
+# ============================================================
+proba_avant = rf.predict_proba(X_test)[:, 1]
+pred_avant = (proba_avant >= SEUIL_DECISION).astype(int)
+taux_fail_avant = pred_avant.mean() * 100
+print(f"Taux de fail PREDIT (baseline, seuil={SEUIL_DECISION}) : {taux_fail_avant:.2f}%")
+
+# ============================================================
+# 3. CORRECTION D'UN CAPTEUR A LA FOIS - effet marginal individuel
+# ============================================================
+resultats = []
+for capteur in capteurs_prioritaires:
+    X_modif = X_test.copy()
+    X_modif[capteur] = mediane_pass[capteur]  # un seul capteur change
+
+    proba_modif = rf.predict_proba(X_modif)[:, 1]
+    pred_modif = (proba_modif >= SEUIL_DECISION).astype(int)
+    taux_fail_modif = pred_modif.mean() * 100
+
+    reduction = taux_fail_avant - taux_fail_modif
+    n_bascules = ((pred_avant == 1) & (pred_modif == 0)).sum()
+
+    resultats.append({
+        "capteur": capteur,
+        "taux_fail_predit_apres_pct": round(taux_fail_modif, 2),
+        "reduction_points": round(reduction, 2),
+        "lots_bascules_fail_vers_pass": n_bascules
+    })
+
+resultats_df = pd.DataFrame(resultats).sort_values("reduction_points", ascending=False)
+
+print("\n" + "="*70)
+print(f"EFFET MARGINAL INDIVIDUEL DE CHAQUE CAPTEUR (baseline={taux_fail_avant:.2f}%)")
+print("="*70)
+print(resultats_df.to_string(index=False))
+
+# ============================================================
+# 4. MEILLEUR CANDIDAT UNIQUE - simulation financiere prudente
+# ============================================================
+meilleur = resultats_df.iloc[0]
+print(f"\nMeilleur candidat individuel : {meilleur['capteur']} "
+      f"(reduction de {meilleur['reduction_points']} points, seul)")
+
+COUT_PAR_DEFAUT_EUROS = 5000
+LOTS_PAR_AN = 2000
+taux_fail_reel_baseline = 6.64
+
+reduction_relative_prudente = (meilleur["reduction_points"] / taux_fail_avant) * 100 if taux_fail_avant > 0 else 0
+nouveau_taux_fail_estime = taux_fail_reel_baseline * (1 - reduction_relative_prudente/100)
+lots_evites_an = LOTS_PAR_AN * (taux_fail_reel_baseline - nouveau_taux_fail_estime) / 100
+gain_financier = lots_evites_an * COUT_PAR_DEFAUT_EUROS
+
+print("\n" + "="*70)
+print("PROJECTION PRUDENTE - action sur le capteur le plus impactant SEUL")
+print("="*70)
+print(f"Taux de fail baseline (Define)      : {taux_fail_reel_baseline:.2f}%")
+print(f"Reduction relative estimee          : {reduction_relative_prudente:.1f}%")
+print(f"Nouveau taux de fail estime          : {nouveau_taux_fail_estime:.2f}%")
+print(f"Lots defectueux evites / an          : {lots_evites_an:.0f}")
+print(f"Gain financier annuel estime          : {gain_financier:,.0f} EUR")
+print("\nNote : ceci est une estimation PRUDENTE basee sur un seul capteur")
+print("corrige individuellement. Corriger plusieurs capteurs a la fois")
+print("necessiterait des tests progressifs (un a un, en verifiant la")
+print("stabilite a chaque etape) plutot qu'une simulation simultanee.")
+
+# ============================================================
+# 5. SAUVEGARDE
+# ============================================================
+resultats_df.to_csv("data/processed/improve_simulation_resultats.csv", index=False)
+print("\nResultats sauvegardes : data/processed/improve_simulation_resultats.csv")

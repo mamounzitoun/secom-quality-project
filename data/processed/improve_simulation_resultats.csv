@@ -1,0 +1,11 @@
+capteur,taux_fail_predit_apres_pct,reduction_points,lots_bascules_fail_vers_pass
+Sensor_060,20.66,5.36,25
+Sensor_041,24.23,1.79,11
+Sensor_511,24.49,1.53,12
+Sensor_117,25.51,0.51,12
+Sensor_104,26.28,-0.26,7
+Sensor_022,28.32,-2.3,5
+Sensor_029,29.08,-3.06,1
+Sensor_125,29.34,-3.32,0
+Sensor_131,29.85,-3.83,0
+Sensor_122,30.87,-4.85,0
