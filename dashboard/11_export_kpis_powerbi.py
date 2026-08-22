@@ -26,6 +26,6 @@ kpis = pd.DataFrame([
     {"indicateur": "Capteurs sous surveillance perenne (Control)", "valeur": "10"},
 ])
 
-kpis.to_csv("dashboard/kpis_synthese_dmaic.csv", index=False)
+kpis.to_csv("dashboard/kpis_synthese_dmaic.csv", index=False, sep=";", decimal=",")
 print("KPIs sauvegardes : dashboard/kpis_synthese_dmaic.csv")
 print(kpis.to_string(index=False))

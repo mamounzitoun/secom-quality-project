@@ -1,11 +1,11 @@
-indicateur,valeur
-Taux de fail baseline (Define),6.64%
-Objectif SMART (Define),5.31%
-Capteurs analyses (initial),590
-Capteurs retenus apres nettoyage (Measure),442
-Capteur le plus critique (Analyze - SHAP),Sensor_060
-ROC-AUC du modele (Analyze),0.785
-Nouveau taux de fail estime (Improve),5.27%
-Gain financier annuel estime (Improve),136 779 EUR
-Total alertes SPC actives (Control),4951
-Capteurs sous surveillance perenne (Control),10
+indicateur;valeur
+Taux de fail baseline (Define);6.64%
+Objectif SMART (Define);5.31%
+Capteurs analyses (initial);590
+Capteurs retenus apres nettoyage (Measure);442
+Capteur le plus critique (Analyze - SHAP);Sensor_060
+ROC-AUC du modele (Analyze);0.785
+Nouveau taux de fail estime (Improve);5.27%
+Gain financier annuel estime (Improve);136 779 EUR
+Total alertes SPC actives (Control);4951
+Capteurs sous surveillance perenne (Control);10

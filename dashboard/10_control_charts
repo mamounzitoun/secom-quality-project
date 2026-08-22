@@ -118,7 +118,7 @@ for capteur in capteurs_prioritaires:
         })
 
 export_df = pd.DataFrame(export_powerbi)
-export_df.to_csv("dashboard/donnees_controle_powerbi.csv", index=False)
+export_df.to_csv("dashboard/donnees_controle_powerbi.csv", index=False, sep=";", decimal=",")
 print(f"\nExport Power BI sauvegarde : dashboard/donnees_controle_powerbi.csv ({len(export_df)} lignes)")
 
 alertes_df.to_csv("data/processed/alertes_control.csv", index=False)
